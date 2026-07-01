@@ -1,0 +1,9 @@
+@namespace golfsimz_v1
+<Router AppAssembly="@typeof(Program).Assembly">
+    <Found Context="routeData">
+        <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
+    </Found>
+    <NotFound>
+        <p role="alert">Sorry, there's nothing at this address.</p>
+    </NotFound>
+</Router>
