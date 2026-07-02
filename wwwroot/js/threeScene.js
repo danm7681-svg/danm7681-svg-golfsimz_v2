@@ -1,3 +1,6 @@
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
 let scene, camera, renderer, controls, line, ballMesh;
 
 window.init3DTracer = function(canvasId) {
@@ -7,32 +10,51 @@ window.init3DTracer = function(canvasId) {
     const container = canvas.parentElement;
     const width = container.clientWidth || 800;
     const height = container.clientHeight || 600;
-    canvas.width = width;
-    canvas.height = height;
 
     scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x87CEEB);
+    scene.background = new THREE.Color(0x0a0a1a);
 
     camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-    camera.position.set(0, 8, -20);
+    camera.position.set(0, 30, -20);
     camera.lookAt(0, 0, 80);
 
     renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
     renderer.setSize(width, height);
-    renderer.setPixelRatio(window.devicePixelRatio || 1);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
-    controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls = new OrbitControls(camera, renderer.domElement);
     controls.target.set(0, 0, 80);
     controls.enableDamping = true;
-    controls.dampingFactor = 0.05;
+    controls.dampingFactor = 0.08;
     controls.update();
 
-    // Ground grid
-    const grid = new THREE.GridHelper(300, 30, 0x33663b, 0x224428);
-    grid.position.set(0, 0, 80);
+    // Lighting
+    const ambient = new THREE.AmbientLight(0x404060, 0.6);
+    scene.add(ambient);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+    dirLight.position.set(50, 50, 50);
+    scene.add(dirLight);
+
+    // Ground
+    const grid = new THREE.GridHelper(300, 30, 0x2a5a1e, 0x1a3a14);
+    grid.position.set(0, -0.01, 80);
     scene.add(grid);
 
-    renderer.render(scene, camera);
+    // Fairway
+    const fairwayGeo = new THREE.PlaneGeometry(20, 280);
+    const fairwayMat = new THREE.MeshStandardMaterial({ color: 0x3d7a2a, roughness: 0.7 });
+    const fairway = new THREE.Mesh(fairwayGeo, fairwayMat);
+    fairway.rotation.x = -Math.PI / 2;
+    fairway.position.set(0, 0, 80);
+    scene.add(fairway);
+
+    function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        renderer.render(scene, camera);
+    }
+    animate();
+
     console.log('3D Scene initialized');
 };
 
@@ -47,18 +69,16 @@ window.update3DTracer = function(pointsJson) {
 
         const threePoints = points.map(p => new THREE.Vector3(p.x, p.y, p.z));
         const geometry = new THREE.BufferGeometry().setFromPoints(threePoints);
-        const material = new THREE.LineBasicMaterial({ color: 0xff8c00 });
+        const material = new THREE.LineBasicMaterial({ color: 0x00d4ff });
         line = new THREE.Line(geometry, material);
         scene.add(line);
 
         const last = threePoints[threePoints.length - 1];
-        const sphereGeo = new THREE.SphereGeometry(0.6, 12, 12);
-        const sphereMat = new THREE.MeshStandardMaterial({ color: 0xffaa00 });
+        const sphereGeo = new THREE.SphereGeometry(0.5, 16, 16);
+        const sphereMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 });
         ballMesh = new THREE.Mesh(sphereGeo, sphereMat);
         ballMesh.position.copy(last);
         scene.add(ballMesh);
-
-        renderer.render(scene, camera);
     } catch(e) {
         console.error('update3DTracer error:', e);
     }
