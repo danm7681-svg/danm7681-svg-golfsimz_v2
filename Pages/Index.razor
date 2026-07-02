@@ -1,115 +1,111 @@
 @page "/"
-@using golfsimz_v2.Models
-@using golfsimz_v2.Services
-@inject IPhysicsService PhysicsService
-@inject IJSRuntime JSRuntime
+@inject IJSRuntime JS
+@inject IPhysicsService Physics
+
+<PageTitle>Golfsimz V2</PageTitle>
 
 <div class="app-container">
-    <!-- 3D Viewport -->
-    <div class="viewport" style="flex:1; position:relative; background:#0a0a1a; overflow:hidden;">
-        <canvas id="threeCanvas" style="width:100%; height:100%; display:block;"></canvas>
-        <div class="birdseye-overlay" style="position:absolute; top:20px; right:20px; width:320px; height:420px; border-radius:12px; border:2px solid #2a2a4a; overflow:hidden; background:#0a0a1a; box-shadow:0 4px 24px rgba(0,0,0,0.9);">
-            <canvas id="birdseyeCanvas" width="320" height="420"></canvas>
+    <div class="viewport">
+        <canvas id="threeCanvas"></canvas>
+        <div class="birdseye-overlay">
+            <canvas id="birdseyeCanvas"></canvas>
         </div>
     </div>
 
-    <!-- Data Panel -->
     <div class="data-panel">
-        <div class="metric">
-            <span class="label">CARRY</span>
-            <span class="value">@(Result?.CarryYards.ToString("F1") ?? "---")</span>
-            <span class="unit">yds</span>
-        </div>
-        <div class="metric">
-            <span class="label">TOTAL</span>
-            <span class="value">@(Result?.TotalYards.ToString("F1") ?? "---")</span>
-            <span class="unit">yds</span>
-        </div>
-        <div class="metric">
-            <span class="label">BALL SPEED</span>
-            <span class="value">@(Input.BallSpeedMph.ToString("F0"))</span>
-            <span class="unit">mph</span>
-        </div>
-        <div class="metric">
-            <span class="label">LAUNCH</span>
-            <span class="value">@(Input.LaunchAngleDeg.ToString("F1"))</span>
-            <span class="unit">deg</span>
-        </div>
-        <div class="metric">
-            <span class="label">HEIGHT</span>
-            <span class="value">@(Result?.ApexFeet.ToString("F0") ?? "---")</span>
-            <span class="unit">ft</span>
-        </div>
-        <div class="metric">
-            <span class="label">LANDING</span>
-            <span class="value">@(Result?.LandingAngleDeg.ToString("F0") ?? "---")</span>
-            <span class="unit">deg</span>
-        </div>
+        @if (result != null)
+        {
+            <div class="metric">
+                <span class="label">Carry</span>
+                <span class="value">@result.CarryYards.ToString("F1")</span>
+                <span class="unit">yds</span>
+            </div>
+            <div class="metric">
+                <span class="label">Total</span>
+                <span class="value">@result.TotalYards.ToString("F1")</span>
+                <span class="unit">yds</span>
+            </div>
+            <div class="metric">
+                <span class="label">Apex</span>
+                <span class="value">@result.ApexFeet.ToString("F1")</span>
+                <span class="unit">ft</span>
+            </div>
+            <div class="metric">
+                <span class="label">Hang Time</span>
+                <span class="value">@result.HangTimeSeconds.ToString("F2")</span>
+                <span class="unit">s</span>
+            </div>
+            <div class="metric">
+                <span class="label">Offline</span>
+                <span class="value" style="color:@(result.OfflineYards < 0 ? "#ff4455" : "#00ff88")">
+                    @(result.OfflineYards < 0 ? "L" : "R") @Math.Abs(result.OfflineYards).ToString("F1")
+                </span>
+                <span class="unit">yds</span>
+            </div>
+        }
     </div>
 
-    <!-- Editable Tiles -->
     <div class="tiles-bar">
         <div class="tile">
-            <span class="tile-label">CLUB</span>
-            <input @bind="Input.Club" class="tile-input" />
+            <span class="tile-label">Speed</span>
+            <input type="number" class="tile-input" @bind-value="ballSpeed" @bind-value:event="oninput" />
         </div>
         <div class="tile">
-            <span class="tile-label">BALL SPEED</span>
-            <input @bind="Input.BallSpeedMph" type="number" class="tile-input" />
+            <span class="tile-label">Launch</span>
+            <input type="number" class="tile-input" @bind-value="launchAngle" @bind-value:event="oninput" />
         </div>
         <div class="tile">
-            <span class="tile-label">LAUNCH</span>
-            <input @bind="Input.LaunchAngleDeg" type="number" class="tile-input" />
+            <span class="tile-label">Spin</span>
+            <input type="number" class="tile-input" @bind-value="spinRate" @bind-value:event="oninput" />
         </div>
-        <div class="tile">
-            <span class="tile-label">BACKSPIN</span>
-            <input @bind="Input.BackspinRpm" type="number" class="tile-input" />
-        </div>
-        <div class="tile">
-            <span class="tile-label">SIDESPIN</span>
-            <input @bind="Input.SidespinRpm" type="number" class="tile-input" />
-        </div>
-        <div class="tile">
-            <span class="tile-label">SIDE ANGLE</span>
-            <input @bind="Input.SideAngleDeg" type="number" class="tile-input" />
-        </div>
-        <button @onclick="Simulate" class="run-btn">▶</button>
+        <button class="run-btn" @onclick="RunSimulation">LAUNCH</button>
     </div>
 </div>
 
 @code {
-    private ShotInput Input { get; set; } = new();
-    private SimulationResult? Result { get; set; }
+    private float ballSpeed = 150f;
+    private float launchAngle = 12f;
+    private float spinRate = 2500f;
+    private SimulationResult? result;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
-            await Task.Delay(300);
-            await JSRuntime.InvokeVoidAsync("init3DTracer", "threeCanvas");
-            await Task.Delay(100);
-            await Simulate();
+            await JS.InvokeVoidAsync("init3DTracer", "threeCanvas");
         }
     }
 
-    private async Task Simulate()
+    private async Task RunSimulation()
     {
-        Result = PhysicsService.Simulate(Input);
-        await RenderTrajectory(Result);
-        StateHasChanged();
-    }
+        var input = new ShotInput
+        {
+            BallSpeedMph = ballSpeed,
+            LaunchAngleDeg = launchAngle,
+            BackspinRpm = spinRate
+        };
 
-    private async Task RenderTrajectory(SimulationResult result)
-    {
-        var points = result.Trajectory.Select(p => new
+        result = Physics.Simulate(input);
+
+        // Send trajectory to Three.js
+        var jsPoints = result.Trajectory.Select(p => new
         {
             x = p.OfflineYards,
             y = p.AltitudeFeet / 3.28084f,
             z = p.DownrangeYards
-        }).ToArray();
+        });
 
-        var json = System.Text.Json.JsonSerializer.Serialize(points);
-        await JSRuntime.InvokeVoidAsync("update3DTracer", json);
-        await JSRuntime.InvokeVoidAsync("drawBirdseye", "birdseyeCanvas", json);
+        await JS.InvokeVoidAsync("update3DTracer", System.Text.Json.JsonSerializer.Serialize(jsPoints));
+
+        // Draw birdseye
+        var topDown = result.Trajectory.Select(p => new
+        {
+            x = p.OfflineYards,
+            z = p.DownrangeYards
+        });
+
+        await JS.InvokeVoidAsync("drawBirdseye", "birdseyeCanvas", System.Text.Json.JsonSerializer.Serialize(topDown));
+
+        StateHasChanged();
     }
 }
