@@ -1,42 +1,46 @@
 @page "/"
+@using golfsimz_v2.Models
+@using golfsimz_v2.Services
 @inject IJSRuntime JS
 @inject IPhysicsService Physics
 
 <PageTitle>Golfsimz V2</PageTitle>
 
 <div class="app-container">
+    <!-- 3D Viewport -->
     <div class="viewport">
         <canvas id="threeCanvas"></canvas>
         <div class="birdseye-overlay">
-            <canvas id="birdseyeCanvas"></canvas>
+            <canvas id="birdseyeCanvas" width="320" height="420"></canvas>
         </div>
     </div>
 
+    <!-- Data Panel -->
     <div class="data-panel">
         @if (result != null)
         {
             <div class="metric">
-                <span class="label">Carry</span>
+                <span class="label">CARRY</span>
                 <span class="value">@result.CarryYards.ToString("F1")</span>
                 <span class="unit">yds</span>
             </div>
             <div class="metric">
-                <span class="label">Total</span>
+                <span class="label">TOTAL</span>
                 <span class="value">@result.TotalYards.ToString("F1")</span>
                 <span class="unit">yds</span>
             </div>
             <div class="metric">
-                <span class="label">Apex</span>
+                <span class="label">APEX</span>
                 <span class="value">@result.ApexFeet.ToString("F1")</span>
                 <span class="unit">ft</span>
             </div>
             <div class="metric">
-                <span class="label">Hang Time</span>
+                <span class="label">HANG TIME</span>
                 <span class="value">@result.HangTimeSeconds.ToString("F2")</span>
                 <span class="unit">s</span>
             </div>
             <div class="metric">
-                <span class="label">Offline</span>
+                <span class="label">OFFLINE</span>
                 <span class="value" style="color:@(result.OfflineYards < 0 ? "#ff4455" : "#00ff88")">
                     @(result.OfflineYards < 0 ? "L" : "R") @Math.Abs(result.OfflineYards).ToString("F1")
                 </span>
@@ -45,27 +49,63 @@
         }
     </div>
 
+    <!-- Editable Tiles -->
     <div class="tiles-bar">
+        <!-- CLUB -->
         <div class="tile">
-            <span class="tile-label">Speed</span>
-            <input type="number" class="tile-input" @bind-value="ballSpeed" @bind-value:event="oninput" />
+            <span class="tile-label">CLUB</span>
+            <input @bind="Input.Club" class="tile-input" />
         </div>
+
+        <!-- CLUB NUMBER -->
         <div class="tile">
-            <span class="tile-label">Launch</span>
-            <input type="number" class="tile-input" @bind-value="launchAngle" @bind-value:event="oninput" />
+            <span class="tile-label">CLUB #</span>
+            <input @bind="Input.ClubNumber" type="number" class="tile-input" />
         </div>
+
+        <!-- BALL SPEED -->
         <div class="tile">
-            <span class="tile-label">Spin</span>
-            <input type="number" class="tile-input" @bind-value="spinRate" @bind-value:event="oninput" />
+            <span class="tile-label">BALL SPEED</span>
+            <input @bind="Input.BallSpeedMph" type="number" class="tile-input" />
         </div>
-        <button class="run-btn" @onclick="RunSimulation">LAUNCH</button>
+
+        <!-- LAUNCH -->
+        <div class="tile">
+            <span class="tile-label">LAUNCH</span>
+            <input @bind="Input.LaunchAngleDeg" type="number" class="tile-input" />
+        </div>
+
+        <!-- BACKSPIN -->
+        <div class="tile">
+            <span class="tile-label">BACKSPIN</span>
+            <input @bind="Input.BackspinRpm" type="number" class="tile-input" />
+        </div>
+
+        <!-- SPIN AXIS -->
+        <div class="tile">
+            <span class="tile-label">SPIN AXIS</span>
+            <input @bind="Input.SpinAxisDeg" type="number" step="0.1" class="tile-input" />
+        </div>
+
+        <!-- SIDESPIN -->
+        <div class="tile">
+            <span class="tile-label">SIDESPIN</span>
+            <input @bind="Input.SidespinRpm" type="number" class="tile-input" />
+        </div>
+
+        <!-- SIDE ANGLE -->
+        <div class="tile">
+            <span class="tile-label">SIDE ANGLE</span>
+            <input @bind="Input.SideAngleDeg" type="number" class="tile-input" />
+        </div>
+
+        <!-- RUN BUTTON -->
+        <button @onclick="RunSimulation" class="run-btn">▶</button>
     </div>
 </div>
 
 @code {
-    private float ballSpeed = 150f;
-    private float launchAngle = 12f;
-    private float spinRate = 2500f;
+    private ShotInput Input { get; set; } = new();
     private SimulationResult? result;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -73,19 +113,14 @@
         if (firstRender)
         {
             await JS.InvokeVoidAsync("init3DTracer", "threeCanvas");
+            // Optionally run a default shot on load
+            await RunSimulation();
         }
     }
 
     private async Task RunSimulation()
     {
-        var input = new ShotInput
-        {
-            BallSpeedMph = ballSpeed,
-            LaunchAngleDeg = launchAngle,
-            BackspinRpm = spinRate
-        };
-
-        result = Physics.Simulate(input);
+        result = Physics.Simulate(Input);
 
         // Send trajectory to Three.js
         var jsPoints = result.Trajectory.Select(p => new

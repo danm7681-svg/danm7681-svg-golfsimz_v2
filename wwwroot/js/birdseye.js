@@ -17,7 +17,7 @@ window.drawBirdseye = function(canvasId, pointsJson) {
         }
 
         const maxZ = Math.max(...points.map(p => p.z)) || 1;
-        ctx.strokeStyle = '#ffaa00';
+        ctx.strokeStyle = '#89CFF0';
         ctx.lineWidth = 3;
         ctx.beginPath();
         for (let i = 0; i < points.length; i++) {

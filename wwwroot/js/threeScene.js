@@ -17,12 +17,12 @@ window.init3DTracer = function(canvasId) {
 
     // Sky gradient using scene background color + fog
     scene.background = new THREE.Color(0x87CEEB);  // Sky blue
-    scene.fog = new THREE.Fog(0xc8e6ff, 200, 400); // Distant haze
+    scene.fog = new THREE.Fog(0xc8e6ff, 200, 800); // Distant haze
 
     // Camera
     camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-    camera.position.set(-15, 25, -10);
-    camera.lookAt(0, 0, 80);
+    camera.position.set(10, 15, -30);
+    camera.lookAt(0, 1, 20);
 
     // Renderer
     renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -33,7 +33,7 @@ window.init3DTracer = function(canvasId) {
 
     // Controls
     controls = new OrbitControls(camera, renderer.domElement);
-    controls.target.set(0, 0, 80);
+    controls.target.set(0, 0.5, 40);
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
     controls.maxPolarAngle = Math.PI / 2.2;
@@ -226,10 +226,7 @@ window.update3DTracer = function(pointsJson) {
 
         const threePoints = points.map(p => new THREE.Vector3(p.x, p.y, p.z));
         const geometry = new THREE.BufferGeometry().setFromPoints(threePoints);
-        const material = new THREE.LineBasicMaterial({ 
-            color: 0xff6600,
-            linewidth: 2,
-        });
+        const material = new THREE.LineBasicMaterial({ color: 0x89CFF0, linewidth: 2,});
         line = new THREE.Line(geometry, material);
         scene.add(line);
 
@@ -245,10 +242,7 @@ window.update3DTracer = function(pointsJson) {
         ballMesh.position.copy(last);
         ballMesh.castShadow = true;
         scene.add(ballMesh);
-
-        // Smooth camera to landing
-        controls.target.lerp(last, 0.5);
-        controls.update();
+        
     } catch(e) {
         console.error('update3DTracer error:', e);
     }
